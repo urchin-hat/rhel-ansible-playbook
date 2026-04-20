@@ -1,0 +1,6 @@
+---
+- name: Setup development machine
+  hosts: localhost
+  become: yes
+  roles:
+    - coreutils
