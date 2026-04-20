@@ -1,0 +1,35 @@
+---
+- name: Download lsd
+  get_url:
+    url: "https://github.com/lsd-rs/lsd/releases/download/{{ lsd_version }}/lsd-{{ lsd_version }}-x86_64-unknown-linux-gnu.tar.gz"
+    dest: /tmp/lsd.tar.gz
+
+- name: Extract lsd
+  unarchive:
+    src: /tmp/lsd.tar.gz
+    dest: /tmp
+    remote_src: yes
+
+- name: Install lsd binary
+  copy:
+    src: "/tmp/lsd-{{ lsd_version }}-x86_64-unknown-linux-gnu/lsd"
+    dest: "{{ install_dir }}/lsd"
+    mode: '0755'
+    remote_src: yes
+
+- name: Clean up lsd
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /tmp/lsd.tar.gz
+    - "/tmp/lsd-{{ lsd_version }}-x86_64-unknown-linux-gnu"
+
+- name: Verify lsd installation
+  command: "{{ install_dir }}/lsd --version"
+  register: lsd_version_output
+  changed_when: false
+
+- name: Show lsd version
+  debug:
+    msg: "{{ lsd_version_output.stdout }}"

@@ -1,0 +1,6 @@
+---
+- name: Install modern coreutils
+  include_tasks: "{{ item }}.yml"
+  loop:
+    - lsd
+    - bat
