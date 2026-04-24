@@ -4,4 +4,5 @@
   loop:
     - lsd
     - bat
+    - tre
     - mise
