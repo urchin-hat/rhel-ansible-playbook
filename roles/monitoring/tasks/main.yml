@@ -188,26 +188,27 @@
   when: grafana_allow_network_connect_selinux
 
 - name: Check Grafana datasource SELinux network permission
-  command: getsebool httpd_can_network_connect
-  register: monitoring_selinux_network_connect
+  command: "getsebool {{ item }}"
+  register: monitoring_selinux_boolean_checks
   changed_when: false
   failed_when: false
+  loop: "{{ grafana_selinux_booleans }}"
   when:
     - grafana_allow_network_connect_selinux
     - monitoring_selinux_status is defined
     - monitoring_selinux_status.rc == 0
     - monitoring_selinux_status.stdout != "Disabled"
 
-- name: Allow Grafana to query Prometheus on SELinux hosts
-  command: setsebool -P httpd_can_network_connect on
+- name: Allow Grafana to query data sources on SELinux hosts
+  command: "setsebool -P {{ item.item }} on"
+  loop: "{{ monitoring_selinux_boolean_checks.results | default([]) }}"
   when:
     - grafana_allow_network_connect_selinux
     - monitoring_selinux_status is defined
     - monitoring_selinux_status.rc == 0
     - monitoring_selinux_status.stdout != "Disabled"
-    - monitoring_selinux_network_connect is defined
-    - monitoring_selinux_network_connect.rc == 0
-    - "' --> on' not in monitoring_selinux_network_connect.stdout"
+    - item.rc == 0
+    - "' --> on' not in item.stdout"
 
 - name: Enable and start Prometheus services
   systemd:

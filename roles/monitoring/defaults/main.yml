@@ -7,14 +7,14 @@ prometheus_group: prometheus
 prometheus_install_dir: /opt/prometheus
 prometheus_config_dir: /etc/prometheus
 prometheus_data_dir: /var/lib/prometheus
-prometheus_listen_address: "127.0.0.1:9090"
+prometheus_listen_address: "127.0.0.1:9091"
 prometheus_retention_time: 30d
 prometheus_scrape_interval: 15s
 prometheus_evaluation_interval: 15s
 prometheus_scrape_targets:
   - job_name: prometheus
     targets:
-      - localhost:9090
+      - localhost:9091
   - job_name: node
     targets:
       - localhost:9100
@@ -32,8 +32,11 @@ grafana_http_port: 3000
 grafana_admin_user: admin
 grafana_admin_password: admin
 grafana_prometheus_datasource_name: Prometheus
-grafana_prometheus_datasource_url: http://127.0.0.1:9090
+grafana_prometheus_datasource_url: http://127.0.0.1:9091
 grafana_allow_network_connect_selinux: true
+grafana_selinux_booleans:
+  - grafana_can_tcp_connect_prometheus_port
+  - httpd_can_network_connect
 
 monitoring_configure_firewalld: true
 monitoring_firewalld_ports:

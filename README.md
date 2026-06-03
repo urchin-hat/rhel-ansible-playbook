@@ -12,7 +12,7 @@ ansible-playbook monitoring.yml
 Default endpoints:
 
 - Grafana: `http://<server>:3000`
-- Prometheus: `http://localhost:9090`
+- Prometheus: `http://localhost:9091`
 - node_exporter: `http://localhost:9100/metrics`
 
 Only Grafana is exposed through firewalld by default. Prometheus and
@@ -31,6 +31,7 @@ prometheus_scrape_targets:
       - localhost:9100
 ```
 
-Grafana connects to Prometheus through `http://127.0.0.1:9090` by default.
+Grafana connects to Prometheus through `http://127.0.0.1:9091` by default.
+Port `9090` is left available for Cockpit on RHEL hosts.
 On SELinux-enabled RHEL hosts, the role also enables
 `httpd_can_network_connect` so Grafana can query local data sources.
