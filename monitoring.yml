@@ -1,0 +1,6 @@
+---
+- name: Setup monitoring stack
+  hosts: local
+  become: yes
+  roles:
+    - monitoring
