@@ -1,0 +1,3 @@
+(type {{ prometheus_selinux_port_type }})
+(typeattributeset port_type ({{ prometheus_selinux_port_type }}))
+(allow grafana_t {{ prometheus_selinux_port_type }} (tcp_socket (name_connect)))
