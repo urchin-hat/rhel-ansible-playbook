@@ -180,6 +180,35 @@
     mode: '0640'
   notify: restart grafana
 
+- name: Check SELinux status
+  command: getenforce
+  register: monitoring_selinux_status
+  changed_when: false
+  failed_when: false
+  when: grafana_allow_network_connect_selinux
+
+- name: Check Grafana datasource SELinux network permission
+  command: getsebool httpd_can_network_connect
+  register: monitoring_selinux_network_connect
+  changed_when: false
+  failed_when: false
+  when:
+    - grafana_allow_network_connect_selinux
+    - monitoring_selinux_status is defined
+    - monitoring_selinux_status.rc == 0
+    - monitoring_selinux_status.stdout != "Disabled"
+
+- name: Allow Grafana to query Prometheus on SELinux hosts
+  command: setsebool -P httpd_can_network_connect on
+  when:
+    - grafana_allow_network_connect_selinux
+    - monitoring_selinux_status is defined
+    - monitoring_selinux_status.rc == 0
+    - monitoring_selinux_status.stdout != "Disabled"
+    - monitoring_selinux_network_connect is defined
+    - monitoring_selinux_network_connect.rc == 0
+    - "' --> on' not in monitoring_selinux_network_connect.stdout"
+
 - name: Enable and start Prometheus services
   systemd:
     name: "{{ item }}"
