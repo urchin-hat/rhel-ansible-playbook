@@ -32,7 +32,8 @@ grafana_http_port: 3000
 grafana_admin_user: admin
 grafana_admin_password: admin
 grafana_prometheus_datasource_name: Prometheus
-grafana_prometheus_datasource_url: http://localhost:9090
+grafana_prometheus_datasource_url: http://127.0.0.1:9090
+grafana_allow_network_connect_selinux: true
 
 monitoring_configure_firewalld: true
 monitoring_firewalld_ports:

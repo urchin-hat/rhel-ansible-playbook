@@ -30,3 +30,7 @@ prometheus_scrape_targets:
     targets:
       - localhost:9100
 ```
+
+Grafana connects to Prometheus through `http://127.0.0.1:9090` by default.
+On SELinux-enabled RHEL hosts, the role also enables
+`httpd_can_network_connect` so Grafana can query local data sources.
