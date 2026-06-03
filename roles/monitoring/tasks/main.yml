@@ -211,6 +211,27 @@
     - item.rc == 0
     - "' --> on' not in item.stdout"
 
+- name: Install Grafana to Prometheus SELinux policy file
+  template:
+    src: grafana-prometheus-local.cil.j2
+    dest: "/tmp/{{ prometheus_selinux_module_name }}.cil"
+    owner: root
+    group: root
+    mode: '0644'
+  when:
+    - grafana_allow_network_connect_selinux
+    - monitoring_selinux_status is defined
+    - monitoring_selinux_status.rc == 0
+    - monitoring_selinux_status.stdout != "Disabled"
+
+- name: Install Grafana to Prometheus SELinux policy module
+  command: "semodule -i /tmp/{{ prometheus_selinux_module_name }}.cil"
+  when:
+    - grafana_allow_network_connect_selinux
+    - monitoring_selinux_status is defined
+    - monitoring_selinux_status.rc == 0
+    - monitoring_selinux_status.stdout != "Disabled"
+
 - name: Check Prometheus SELinux port type
   command: "semanage port -l -C"
   register: monitoring_selinux_ports
@@ -228,7 +249,7 @@
     - grafana_allow_network_connect_selinux
     - monitoring_selinux_ports is defined
     - monitoring_selinux_ports.rc == 0
-    - "'{{ prometheus_selinux_port }}' not in monitoring_selinux_ports.stdout"
+    - prometheus_selinux_port | string not in monitoring_selinux_ports.stdout
 
 - name: Update Prometheus SELinux port label
   command: "semanage port -m -t {{ prometheus_selinux_port_type }} -p tcp {{ prometheus_selinux_port }}"
@@ -236,8 +257,8 @@
     - grafana_allow_network_connect_selinux
     - monitoring_selinux_ports is defined
     - monitoring_selinux_ports.rc == 0
-    - "'{{ prometheus_selinux_port }}' in monitoring_selinux_ports.stdout"
-    - "'{{ prometheus_selinux_port_type }}' not in monitoring_selinux_ports.stdout"
+    - prometheus_selinux_port | string in monitoring_selinux_ports.stdout
+    - prometheus_selinux_port_type not in monitoring_selinux_ports.stdout
 
 - name: Enable and start Prometheus services
   systemd:
