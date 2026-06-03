@@ -37,6 +37,8 @@ grafana_allow_network_connect_selinux: true
 grafana_selinux_booleans:
   - grafana_can_tcp_connect_prometheus_port
   - httpd_can_network_connect
+prometheus_selinux_port_type: prometheus_port_t
+prometheus_selinux_port: 9091
 
 monitoring_configure_firewalld: true
 monitoring_firewalld_ports:
