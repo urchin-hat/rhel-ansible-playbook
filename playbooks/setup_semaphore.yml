@@ -1,0 +1,113 @@
+---
+- name: Install and configure Ansible Semaphore
+  hosts: local
+  become: yes
+  vars:
+    semaphore_version: "2.10.11"
+    semaphore_port: "3005" # Grafana (3000) と競合しないように3005を使用
+    semaphore_user: ansible
+    semaphore_group: ansible
+    semaphore_config_dir: "/etc/semaphore"
+    semaphore_data_dir: "/var/lib/semaphore"
+    # クッキー暗号化キー (適当なランダムな文字列を自動生成)
+    semaphore_cookie_secret: "{{ lookup('password', '/dev/null length=32 chars=ascii_letters,digits') | to_uuid | password_hash('sha512') | truncate(32, True, '') }}"
+
+  tasks:
+    - name: Download Semaphore RPM
+      get_url:
+        url: "https://github.com/semaphoreui/semaphore/releases/download/v{{ semaphore_version }}/semaphore_{{ semaphore_version }}_linux_amd64.rpm"
+        dest: "/tmp/semaphore_{{ semaphore_version }}_linux_amd64.rpm"
+        mode: '0644'
+
+    - name: Install Semaphore via RPM
+      dnf:
+        name: "/tmp/semaphore_{{ semaphore_version }}_linux_amd64.rpm"
+        state: present
+        disable_gpg_check: yes
+
+    - name: Create configuration directory
+      file:
+        path: "{{ semaphore_config_dir }}"
+        state: directory
+        owner: "{{ semaphore_user }}"
+        group: "{{ semaphore_group }}"
+        mode: '0755'
+
+    - name: Create data directory for BoltDB
+      file:
+        path: "{{ semaphore_data_dir }}"
+        state: directory
+        owner: "{{ semaphore_user }}"
+        group: "{{ semaphore_group }}"
+        mode: '0755'
+
+    - name: Generate Semaphore configuration (config.json)
+      copy:
+        dest: "{{ semaphore_config_dir }}/config.json"
+        owner: "{{ semaphore_user }}"
+        group: "{{ semaphore_group }}"
+        mode: '0600'
+        content: |
+          {
+            "dialect": "bolt",
+            "bolt": {
+              "path": "{{ semaphore_data_dir }}/database.boltdb"
+            },
+            "port": ":{{ semaphore_port }}",
+            "interface": "0.0.0.0",
+            "tmp_path": "/tmp/semaphore",
+            "cookie_encryption_secret": "{{ semaphore_cookie_secret }}"
+          }
+
+    - name: Install Semaphore systemd unit
+      copy:
+        dest: /etc/systemd/system/semaphore.service
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Ansible Semaphore UI
+          Documentation=https://github.com/semaphoreui/semaphore
+          After=network.target
+
+          [Service]
+          User={{ semaphore_user }}
+          Group={{ semaphore_group }}
+          Type=simple
+          ExecStart=/usr/bin/semaphore service --config={{ semaphore_config_dir }}/config.json
+          Restart=always
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Ensure git is installed (required by Semaphore)
+      package:
+        name: git
+        state: present
+
+    - name: Enable and start Semaphore service
+      systemd:
+        name: semaphore
+        enabled: yes
+        state: started
+        daemon_reload: yes
+
+    - name: Check firewalld status
+      command: systemctl is-active firewalld
+      register: firewalld_status
+      changed_when: false
+      failed_when: false
+
+    - name: Allow Semaphore port in firewalld
+      firewalld:
+        port: "{{ semaphore_port }}/tcp"
+        permanent: yes
+        state: enabled
+        immediate: yes
+      when:
+        - firewalld_status is defined
+        - firewalld_status.rc == 0
+
+    - name: Clean up temporary RPM
+      file:
+        path: "/tmp/semaphore_{{ semaphore_version }}_linux_amd64.rpm"
+        state: absent
