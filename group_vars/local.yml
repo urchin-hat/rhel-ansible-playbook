@@ -9,3 +9,6 @@ prometheus_scrape_targets:
       - localhost:9100
       - 192.168.1.151:9100 # Fedora (Raspberry Pi)
       - 192.168.1.152:9100 # AlmaLinux (Raspberry Pi)
+  - job_name: windows
+    targets:
+      - 192.168.1.200:9182 # Windows Server (windows_exporter)

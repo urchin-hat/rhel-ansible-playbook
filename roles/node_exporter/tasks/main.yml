@@ -1,33 +1,20 @@
 ---
 # ==============================================================================
-# node_exporter 展開ロール (パッケージ管理版)
+# node_exporter 展開ロール
 # ==============================================================================
-# ターゲットサーバーのOSパッケージマネージャー (DNF) を利用して node_exporter を管理します。
-# 外部からのバイナリダウンロードや手動配置は行いません。
+# ターゲットサーバーのOSパッケージマネージャーを利用して node_exporter をインストールし、
+# 起動状態とファイヤーウォール (9100/tcp) の開放を管理します。
 
 - name: Ensure node_exporter package is installed (via OS repository)
   package:
-    name: golang-github-prometheus-node-exporter
-    state: present
-  register: dnf_install_alternative
-  ignore_errors: yes
-
-- name: Try installing via alternative package name if previous failed
-  package:
     name: node_exporter
     state: present
-  when: dnf_install_alternative.failed is defined and dnf_install_alternative.failed
-  ignore_errors: yes
 
 - name: Ensure node_exporter service is enabled and started
   systemd:
-    name: "{{ item }}"
+    name: node_exporter
     enabled: yes
     state: started
-  loop:
-    - prometheus-node-exporter
-    - node_exporter
-  ignore_errors: yes
 
 - name: Check firewalld status
   command: systemctl is-active firewalld
