@@ -9,8 +9,9 @@
     semaphore_group: ansible
     semaphore_config_dir: "/etc/semaphore"
     semaphore_data_dir: "/var/lib/semaphore"
-    # クッキー暗号化キー (適当なランダムな文字列を自動生成)
-    semaphore_cookie_secret: "{{ lookup('password', '/dev/null length=32 chars=ascii_letters,digits') | to_uuid | password_hash('sha512') | truncate(32, True, '') }}"
+    # クッキー用シークレット
+    semaphore_cookie_hash: "{{ lookup('password', '/dev/null length=32 chars=ascii_letters,digits') | to_uuid | password_hash('sha512') | truncate(32, True, '') }}"
+    semaphore_cookie_encryption: "{{ lookup('password', '/dev/null length=32 chars=ascii_letters,digits') | to_uuid | password_hash('sha512') | truncate(32, True, '') }}"
 
   tasks:
     - name: Download Semaphore RPM
@@ -56,7 +57,8 @@
             "port": ":{{ semaphore_port }}",
             "interface": "0.0.0.0",
             "tmp_path": "/tmp/semaphore",
-            "cookie_encryption_secret": "{{ semaphore_cookie_secret }}"
+            "cookie_hash": "{{ semaphore_cookie_hash }}",
+            "cookie_encryption": "{{ semaphore_cookie_encryption }}"
           }
 
     - name: Install Semaphore systemd unit
