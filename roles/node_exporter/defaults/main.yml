@@ -1,11 +1,4 @@
 ---
-node_exporter_version: "1.8.2"
-node_exporter_user: node_exporter
-node_exporter_group: node_exporter
-node_exporter_install_dir: /opt/node_exporter
-# 外部（母艦）から収集されるため、0.0.0.0:9100 で待ち受けます
-node_exporter_listen_address: "0.0.0.0:9100"
-
-# firewalld のポート開放を行うかどうか
+# パッケージ管理版 defaults/main.yml
+# (DNF/YUM経由で管理されるため、インストールパスやユーザーの個別定義は不要です)
 node_exporter_configure_firewall: true
-node_exporter_firewall_port: "9100/tcp"

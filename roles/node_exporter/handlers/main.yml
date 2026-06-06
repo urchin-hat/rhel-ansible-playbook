@@ -1,6 +1,2 @@
 ---
-- name: restart node_exporter
-  systemd:
-    name: node_exporter
-    state: restarted
-    daemon_reload: yes
+# ハンドラーは使用しません (OSパッケージ版のデフォルト設定で動作するため)

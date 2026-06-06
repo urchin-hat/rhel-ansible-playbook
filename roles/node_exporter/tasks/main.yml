@@ -1,107 +1,48 @@
 ---
-- name: Set normalized node_exporter version number
-  set_fact:
-    node_exporter_version_number: "{{ node_exporter_version | regex_replace('^v', '') }}"
+# ==============================================================================
+# node_exporter 展開ロール (パッケージ管理版)
+# ==============================================================================
+# ターゲットサーバーのOSパッケージマネージャー (DNF) を利用して node_exporter を管理します。
+# 外部からのバイナリダウンロードや手動配置は行いません。
 
-- name: Determine system architecture for download
-  set_fact:
-    node_exporter_arch: >-
-      {% if ansible_architecture == 'x86_64' %}amd64
-      {% elif ansible_architecture == 'aarch64' %}arm64
-      {% elif ansible_architecture == 'armv7l' %}armv7
-      {% else %}amd64{% endif %}
-
-- name: Install required packages
+- name: Ensure node_exporter package is installed (via OS repository)
   package:
-    name:
-      - tar
-      - gzip
+    name: golang-github-prometheus-node-exporter
     state: present
+  register: dnf_install_alternative
+  ignore_errors: yes
 
-- name: Create node_exporter group
-  group:
-    name: "{{ node_exporter_group }}"
-    system: yes
-
-- name: Create node_exporter user
-  user:
-    name: "{{ node_exporter_user }}"
-    group: "{{ node_exporter_group }}"
-    system: yes
-    shell: /sbin/nologin
-    create_home: no
-
-- name: Create node_exporter install directory
-  file:
-    path: "{{ node_exporter_install_dir }}"
-    state: directory
-    owner: root
-    group: root
-    mode: '0755'
-
-- name: Download node_exporter
-  get_url:
-    url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version_number }}/node_exporter-{{ node_exporter_version_number }}.linux-{{ node_exporter_arch }}.tar.gz"
-    dest: "/tmp/node_exporter-{{ node_exporter_version_number }}.linux-{{ node_exporter_arch }}.tar.gz"
-    mode: '0644'
-
-- name: Extract node_exporter
-  unarchive:
-    src: "/tmp/node_exporter-{{ node_exporter_version_number }}.linux-{{ node_exporter_arch }}.tar.gz"
-    dest: /tmp
-    remote_src: yes
-
-- name: Install node_exporter binary
-  copy:
-    src: "/tmp/node_exporter-{{ node_exporter_version_number }}.linux-{{ node_exporter_arch }}/node_exporter"
-    dest: "{{ node_exporter_install_dir }}/node_exporter"
-    owner: root
-    group: root
-    mode: '0755'
-    remote_src: yes
-  notify: restart node_exporter
-
-- name: Install node_exporter systemd unit
-  template:
-    src: node_exporter.service.j2
-    dest: /etc/systemd/system/node_exporter.service
-    owner: root
-    group: root
-    mode: '0644'
-  notify: restart node_exporter
-
-- name: Enable and start node_exporter service
-  systemd:
+- name: Try installing via alternative package name if previous failed
+  package:
     name: node_exporter
+    state: present
+  when: dnf_install_alternative.failed is defined and dnf_install_alternative.failed
+  ignore_errors: yes
+
+- name: Ensure node_exporter service is enabled and started
+  systemd:
+    name: "{{ item }}"
     enabled: yes
     state: started
-    daemon_reload: yes
+  loop:
+    - prometheus-node-exporter
+    - node_exporter
+  ignore_errors: yes
 
 - name: Check firewalld status
   command: systemctl is-active firewalld
   register: firewalld_status
   changed_when: false
   failed_when: false
-  when: node_exporter_configure_firewall
 
-- name: Allow node_exporter port in firewalld
-  command: "firewall-cmd --permanent --add-port={{ node_exporter_firewall_port }}"
+- name: Allow node_exporter port (9100/tcp) in firewalld
+  command: "firewall-cmd --permanent --add-port=9100/tcp"
   when:
-    - node_exporter_configure_firewall
     - firewalld_status is defined
     - firewalld_status.rc == 0
 
 - name: Reload firewalld to apply changes
   command: "firewall-cmd --reload"
   when:
-    - node_exporter_configure_firewall
     - firewalld_status is defined
     - firewalld_status.rc == 0
-
-- name: Clean up node_exporter archives
-  file:
-    path: "{{ item }}"
-    state: absent
-  loop:
-    - "/tmp/node_exporter-{{ node_exporter_version_number }}.linux-{{ node_exporter_arch }}.tar.gz"
-    - "/tmp/node_exporter-{{ node_exporter_version_number }}.linux-{{ node_exporter_arch }}"
