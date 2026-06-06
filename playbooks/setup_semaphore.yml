@@ -51,7 +51,7 @@
           {
             "dialect": "bolt",
             "bolt": {
-              "path": "{{ semaphore_data_dir }}/database.boltdb"
+              "host": "{{ semaphore_data_dir }}/database.boltdb"
             },
             "port": ":{{ semaphore_port }}",
             "interface": "0.0.0.0",
