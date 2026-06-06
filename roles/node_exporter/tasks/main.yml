@@ -85,11 +85,14 @@
   when: node_exporter_configure_firewall
 
 - name: Allow node_exporter port in firewalld
-  firewalld:
-    port: "{{ node_exporter_firewall_port }}"
-    permanent: yes
-    state: enabled
-    immediate: yes
+  command: "firewall-cmd --permanent --add-port={{ node_exporter_firewall_port }}"
+  when:
+    - node_exporter_configure_firewall
+    - firewalld_status is defined
+    - firewalld_status.rc == 0
+
+- name: Reload firewalld to apply changes
+  command: "firewall-cmd --reload"
   when:
     - node_exporter_configure_firewall
     - firewalld_status is defined
