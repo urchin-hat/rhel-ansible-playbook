@@ -1,0 +1,11 @@
+---
+# 母艦サーバー (local) 用の監視変数設定
+prometheus_scrape_targets:
+  - job_name: prometheus
+    targets:
+      - localhost:9091
+  - job_name: node
+    targets:
+      - localhost:9100
+      - 192.168.1.151:9100 # Fedora (Raspberry Pi)
+      - 192.168.1.152:9100 # AlmaLinux (Raspberry Pi)

@@ -1,6 +1,15 @@
 ---
-- name: Setup monitoring stack
+# 1. 監視対象 (Raspberry Piの子機) に Node Exporter を導入
+- name: Setup Node Exporter on Raspberry Pis
+  hosts: rpis
+  become: yes
+  roles:
+    - node_exporter
+
+# 2. 母艦サーバー自身 (RHEL) に監視スタック (Prometheus, Grafana, Node Exporter) を導入
+- name: Setup monitoring stack on Master
   hosts: local
   become: yes
   roles:
     - monitoring
+
