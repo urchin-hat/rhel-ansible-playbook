@@ -1,0 +1,35 @@
+---
+- name: Setup dedicated ansible management user
+  hosts: all
+  become: true
+  vars:
+    ansible_user_name: ansible
+    # 母艦の公開鍵ファイルのパス（適宜変更してください）
+    ssh_public_key_path: "~/.ssh/id_ecdsa.pub"
+
+  tasks:
+    - name: Ensure 'wheel' group exists (RHEL/Fedora/AlmaLinux standard sudo group)
+      group:
+        name: wheel
+        state: present
+
+    - name: Create dedicated ansible user
+      user:
+        name: "{{ ansible_user_name }}"
+        shell: /bin/bash
+        groups: wheel
+        append: true
+        state: present
+
+    - name: Set passwordless sudo for the ansible user
+      copy:
+        content: "{{ ansible_user_name }} ALL=(ALL) NOPASSWD:ALL"
+        dest: "/etc/sudoers.d/{{ ansible_user_name }}"
+        mode: '0440'
+        validate: /usr/sbin/visudo -cf %s
+
+    - name: Set up authorized_keys for the ansible user
+      authorized_key:
+        user: "{{ ansible_user_name }}"
+        state: present
+        key: "{{ lookup('file', ssh_public_key_path) }}"
