@@ -98,11 +98,13 @@
       failed_when: false
 
     - name: Allow Semaphore port in firewalld
-      firewalld:
-        port: "{{ semaphore_port }}/tcp"
-        permanent: yes
-        state: enabled
-        immediate: yes
+      command: "firewall-cmd --permanent --add-port={{ semaphore_port }}/tcp"
+      when:
+        - firewalld_status is defined
+        - firewalld_status.rc == 0
+
+    - name: Reload firewalld to apply changes
+      command: "firewall-cmd --reload"
       when:
         - firewalld_status is defined
         - firewalld_status.rc == 0
