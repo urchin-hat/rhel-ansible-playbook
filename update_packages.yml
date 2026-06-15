@@ -9,6 +9,29 @@
           - ansible_os_family == "RedHat"
         fail_msg: "This playbook is designed only for RedHat family distributions."
 
+    - name: Find Google Cloud repository files
+      ansible.builtin.find:
+        paths: /etc/yum.repos.d
+        contains: 'packages.cloud.google.com'
+        patterns: '*.repo'
+      register: google_repos
+
+    - name: Disable gpgcheck in Google Cloud repositories
+      ansible.builtin.replace:
+        path: "{{ item.path }}"
+        regexp: 'gpgcheck\s*=\s*1'
+        replace: 'gpgcheck=0'
+      loop: "{{ google_repos.files }}"
+      when: google_repos.matched > 0
+
+    - name: Disable repo_gpgcheck in Google Cloud repositories
+      ansible.builtin.replace:
+        path: "{{ item.path }}"
+        regexp: 'repo_gpgcheck\s*=\s*1'
+        replace: 'repo_gpgcheck=0'
+      loop: "{{ google_repos.files }}"
+      when: google_repos.matched > 0
+
     - name: Run DNF Update (Upgrade all packages)
       ansible.builtin.dnf:
         name: "*"
