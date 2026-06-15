@@ -1,0 +1,45 @@
+---
+- name: Update all packages on RHEL-based devices
+  hosts: all
+  become: yes
+  tasks:
+    - name: Ensure the host is RedHat family (RHEL, CentOS, Rocky, Alma, Fedora)
+      ansible.builtin.assert:
+        that:
+          - ansible_os_family == "RedHat"
+        fail_msg: "This playbook is designed only for RedHat family distributions."
+
+    - name: Run DNF Update (Upgrade all packages)
+      ansible.builtin.dnf:
+        name: "*"
+        state: latest
+        update_cache: yes
+      register: dnf_result
+
+    - name: Display update results
+      ansible.builtin.debug:
+        var: dnf_result.msg
+      when: dnf_result is defined and dnf_result.msg is defined
+
+    - name: Check if reboot is required
+      ansible.builtin.command: needs-restarting -r
+      register: reboot_required
+      ignore_errors: yes
+      failed_when: false
+      changed_when: false
+
+    - name: Reboot the device if required (Remote hosts only)
+      ansible.builtin.reboot:
+        msg: "Reboot initiated by Ansible after package updates"
+        reboot_timeout: 300
+      when:
+        - reboot_required.rc == 1
+        - ansible_connection != 'local'
+        - inventory_hostname != 'localhost'
+
+    - name: Notify that localhost (master server) requires a reboot
+      ansible.builtin.debug:
+        msg: "WARNING: The Semaphore master server (localhost) requires a reboot to apply updates. Please reboot it manually."
+      when:
+        - reboot_required.rc == 1
+        - (ansible_connection == 'local' or inventory_hostname == 'localhost')
