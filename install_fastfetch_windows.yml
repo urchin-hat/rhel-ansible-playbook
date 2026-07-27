@@ -1,0 +1,9 @@
+---
+- name: Install Fastfetch via Winget
+  hosts: windows
+  gather_facts: false
+  tasks:
+    - name: Run winget install
+      ansible.windows.win_powershell:
+        script: |
+          winget install --id Fastfetch-cli.Fastfetch --exact --source winget --accept-source-agreements --accept-package-agreements
