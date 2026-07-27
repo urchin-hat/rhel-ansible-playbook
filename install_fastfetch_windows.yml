@@ -11,7 +11,7 @@
     - name: Run Fastfetch when PowerShell starts
       ansible.windows.win_powershell:
         script: |
-          $profilePath = $PROFILE
+          $profilePath = '{{ powershell_profile_path }}'
           $profileDirectory = Split-Path -Parent $profilePath
           $profileLine = 'fastfetch'
 
