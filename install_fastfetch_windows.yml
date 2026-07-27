@@ -13,7 +13,8 @@
         script: |
           $profilePath = '{{ powershell_profile_path }}'
           $profileDirectory = Split-Path -Parent $profilePath
-          $profileLine = 'fastfetch'
+          $blockStart = '# BEGIN ANSIBLE MANAGED FASTFETCH'
+          $blockEnd = '# END ANSIBLE MANAGED FASTFETCH'
 
           if (-not (Test-Path -LiteralPath $profileDirectory)) {
               New-Item -ItemType Directory -Path $profileDirectory -Force | Out-Null
@@ -23,12 +24,28 @@
               New-Item -ItemType File -Path $profilePath -Force | Out-Null
           }
 
-          $configured = Select-String -LiteralPath $profilePath `
-              -Pattern '^\s*fastfetch\s*$' `
-              -Quiet
+          $currentContent = Get-Content -LiteralPath $profilePath -Raw
 
-          if (-not $configured) {
-              Add-Content -LiteralPath $profilePath -Value $profileLine
+          # Repair a previous append when the existing file had no trailing newline.
+          $newContent = $currentContent -replace 'csc\.exefastfetch', 'csc.exe'
+
+          # Remove both an existing managed block and standalone Fastfetch entries.
+          $escapedBlockStart = [regex]::Escape($blockStart)
+          $escapedBlockEnd = [regex]::Escape($blockEnd)
+          $managedBlockPattern = "(?ms)^$escapedBlockStart\r?\n.*?^$escapedBlockEnd\r?\n?"
+          $newContent = $newContent -replace $managedBlockPattern, ''
+          $newContent = $newContent -replace '(?m)^\s*fastfetch\s*\r?\n?', ''
+          $newContent = $newContent.TrimEnd("`r", "`n")
+
+          $managedBlock = @"
+          $blockStart
+          fastfetch
+          $blockEnd
+          "@
+          $newContent = "$newContent`r`n`r`n$managedBlock`r`n"
+
+          if ($newContent -cne $currentContent) {
+              Set-Content -LiteralPath $profilePath -Value $newContent -NoNewline
               $Ansible.Changed = $true
           }
           else {
