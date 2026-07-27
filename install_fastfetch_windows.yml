@@ -7,3 +7,30 @@
       ansible.windows.win_powershell:
         script: |
           winget install --id Fastfetch-cli.Fastfetch --exact --source winget --accept-source-agreements --accept-package-agreements
+
+    - name: Run Fastfetch when PowerShell starts
+      ansible.windows.win_powershell:
+        script: |
+          $profilePath = $PROFILE
+          $profileDirectory = Split-Path -Parent $profilePath
+          $profileLine = 'fastfetch'
+
+          if (-not (Test-Path -LiteralPath $profileDirectory)) {
+              New-Item -ItemType Directory -Path $profileDirectory -Force | Out-Null
+          }
+
+          if (-not (Test-Path -LiteralPath $profilePath)) {
+              New-Item -ItemType File -Path $profilePath -Force | Out-Null
+          }
+
+          $configured = Select-String -LiteralPath $profilePath `
+              -Pattern '^\s*fastfetch\s*$' `
+              -Quiet
+
+          if (-not $configured) {
+              Add-Content -LiteralPath $profilePath -Value $profileLine
+              $Ansible.Changed = $true
+          }
+          else {
+              $Ansible.Changed = $false
+          }
