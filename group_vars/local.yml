@@ -16,3 +16,4 @@ prometheus_scrape_targets:
 # k3s API endpoint advertised to kubectl clients on the LAN.
 k3s_podman_tls_sans:
   - 192.168.1.150
+k3s_podman_node_name: homelab-k3s
