@@ -1,0 +1,41 @@
+[Unit]
+Description=k3s server running in a rootful Podman container
+Documentation=https://docs.k3s.io/
+Wants=network-online.target
+After=network-online.target
+RequiresMountsFor={{ k3s_podman_data_dir }} {{ k3s_podman_config_dir }}
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=0
+TimeoutStopSec=90s
+Delegate=yes
+TasksMax=infinity
+LimitNOFILE=1048576
+Environment=PODMAN_SYSTEMD_UNIT=%n
+ExecStartPre=-/usr/bin/podman rm --force {{ k3s_podman_container_name }}
+ExecStart=/usr/bin/podman run \
+  --name {{ k3s_podman_container_name }} \
+  --hostname {{ k3s_podman_node_name | quote }} \
+  --privileged \
+  --network host \
+  --cgroupns=host \
+  --volume {{ k3s_podman_data_dir }}:/var/lib/rancher/k3s:Z \
+  --volume {{ k3s_podman_config_dir }}:/etc/rancher/k3s:Z \
+  --volume /lib/modules:/lib/modules:ro \
+  --env-file {{ k3s_podman_env_file }} \
+  --pull=missing \
+  {{ k3s_podman_image }} \
+  server \
+  --node-name={{ k3s_podman_node_name | quote }} \
+  --write-kubeconfig-mode=0640{% for san in k3s_podman_tls_sans %} \
+  --tls-san={{ san | quote }}{% endfor %}{% for arg in k3s_podman_extra_server_args %} \
+  {{ arg | quote }}{% endfor %}
+
+ExecStop=/usr/bin/podman stop --ignore --time 30 {{ k3s_podman_container_name }}
+ExecStopPost=-/usr/bin/podman rm --force --ignore {{ k3s_podman_container_name }}
+
+[Install]
+WantedBy=multi-user.target
