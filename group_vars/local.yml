@@ -12,3 +12,8 @@ prometheus_scrape_targets:
   - job_name: windows
     targets:
       - 192.168.1.200:9182 # Windows Server (windows_exporter)
+
+# k3s API endpoint advertised to kubectl clients on the LAN.
+k3s_podman_tls_sans:
+  - 192.168.1.150
+k3s_podman_node_name: homelab-k3s

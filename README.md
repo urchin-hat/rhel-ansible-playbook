@@ -1,6 +1,53 @@
 # rhel-ansible-playbook
 An Ansible playbook for RHEL in my environment
 
+## k3s on Podman
+
+Install a single-node k3s server on the `local` inventory group. k3s runs in a
+privileged, rootful Podman container managed by systemd; no Docker daemon is
+installed.
+
+```bash
+ansible-playbook k3s.yml
+sudo podman exec k3s kubectl get nodes
+```
+
+The Kubernetes API listens on port `6443`. The role persists k3s state below
+`/var/lib/rancher/k3s` and writes kubeconfig to
+`/etc/rancher/k3s/k3s.yaml`. Override settings in `group_vars/local.yml`, for
+example:
+
+```yaml
+k3s_podman_image: docker.io/rancher/k3s:v1.36.1-k3s1
+k3s_podman_tls_sans:
+  - 192.168.1.150
+k3s_podman_token: "{{ vault_k3s_token }}"
+```
+
+To use kubectl from another machine, first create a temporary readable copy on
+the server without changing ownership of the original root-only kubeconfig:
+
+```bash
+sudo install -m 0600 -o ansible -g ansible \
+  /etc/rancher/k3s/k3s.yaml /tmp/k3s.yaml
+```
+
+Then copy it to the client and replace its loopback API endpoint:
+
+```bash
+mkdir -p ~/.kube
+scp ansible@192.168.1.150:/tmp/k3s.yaml ~/.kube/k3s-192.168.1.150.yaml
+sed -i.bak 's/127\.0\.0\.1/192.168.1.150/' ~/.kube/k3s-192.168.1.150.yaml
+chmod 600 ~/.kube/k3s-192.168.1.150.yaml
+KUBECONFIG=~/.kube/k3s-192.168.1.150.yaml kubectl get nodes
+```
+
+Delete `/tmp/k3s.yaml` from the server after the copy.
+
+The outer container is run by Podman, while k3s continues to use its bundled
+containerd as the Kubernetes CRI inside that container. Running k3s directly
+with Podman as its CRI is not supported.
+
 ## Monitoring
 
 Prometheus, node_exporter, and Grafana can be installed without containers.

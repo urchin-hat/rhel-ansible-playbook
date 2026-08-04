@@ -1,0 +1,126 @@
+---
+- name: Verify that the target is a Red Hat family system
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family == "RedHat"
+    fail_msg: This role supports only Red Hat family systems.
+
+- name: Install Podman
+  ansible.builtin.package:
+    name: podman
+    state: present
+
+- name: Create persistent k3s directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+  loop:
+    - "{{ k3s_podman_data_dir }}"
+    - "{{ k3s_podman_config_dir }}"
+
+- name: Install k3s container environment file
+  ansible.builtin.template:
+    src: k3s-podman.env.j2
+    dest: "{{ k3s_podman_env_file }}"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: "{{ k3s_podman_token | length > 0 }}"
+  notify: Restart k3s podman
+
+- name: Install k3s Podman systemd service
+  ansible.builtin.template:
+    src: k3s-podman.service.j2
+    dest: "/etc/systemd/system/{{ k3s_podman_service_name }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart k3s podman
+
+- name: Check whether firewalld is running
+  ansible.builtin.command: systemctl is-active firewalld
+  register: k3s_podman_firewalld_status
+  changed_when: false
+  failed_when: false
+  when: k3s_podman_configure_firewalld
+
+- name: Query k3s API firewall port
+  ansible.builtin.command: >-
+    firewall-cmd --permanent --query-port={{ k3s_podman_api_port }}/tcp
+  register: k3s_podman_api_port_status
+  changed_when: false
+  failed_when: k3s_podman_api_port_status.rc not in [0, 1]
+  when:
+    - k3s_podman_configure_firewalld
+    - k3s_podman_firewalld_status.rc == 0
+
+- name: Allow the k3s API through firewalld
+  ansible.builtin.command: >-
+    firewall-cmd --permanent --add-port={{ k3s_podman_api_port }}/tcp
+  when:
+    - k3s_podman_configure_firewalld
+    - k3s_podman_firewalld_status.rc == 0
+    - k3s_podman_api_port_status.rc == 1
+  notify: Reload firewalld for k3s
+
+- name: Query trusted k3s network sources
+  ansible.builtin.command: >-
+    firewall-cmd --permanent --zone=trusted --query-source={{ item }}
+  loop:
+    - "{{ k3s_podman_pod_cidr }}"
+    - "{{ k3s_podman_service_cidr }}"
+  register: k3s_podman_source_status
+  changed_when: false
+  failed_when: k3s_podman_source_status.rc not in [0, 1]
+  when:
+    - k3s_podman_configure_firewalld
+    - k3s_podman_firewalld_status.rc == 0
+
+- name: Trust k3s pod and service networks in firewalld
+  ansible.builtin.command: >-
+    firewall-cmd --permanent --zone=trusted --add-source={{ item.item }}
+  loop: "{{ k3s_podman_source_status.results | default([]) }}"
+  when:
+    - not item.skipped | default(false)
+    - item.rc == 1
+  notify: Reload firewalld for k3s
+
+- name: Apply pending firewall changes before k3s starts
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start k3s Podman service
+  ansible.builtin.systemd:
+    name: "{{ k3s_podman_service_name }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Wait for the k3s API to become ready
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: "{{ k3s_podman_api_port }}"
+    delay: 2
+    timeout: 180
+
+- name: Wait for kubeconfig to be written
+  ansible.builtin.wait_for:
+    path: "{{ k3s_podman_kubeconfig }}"
+    timeout: 60
+
+- name: Verify that the k3s API reports ready
+  ansible.builtin.command:
+    argv:
+      - podman
+      - exec
+      - "{{ k3s_podman_container_name }}"
+      - kubectl
+      - get
+      - --raw=/readyz
+  register: k3s_podman_ready
+  changed_when: false
+  retries: 30
+  delay: 5
+  until: k3s_podman_ready.rc == 0

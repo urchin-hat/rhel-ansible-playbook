@@ -1,0 +1,10 @@
+---
+- name: Reload firewalld for k3s
+  ansible.builtin.command: firewall-cmd --reload
+  changed_when: true
+
+- name: Restart k3s podman
+  ansible.builtin.systemd:
+    name: "{{ k3s_podman_service_name }}"
+    state: restarted
+    daemon_reload: true

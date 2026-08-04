@@ -1,0 +1,7 @@
+---
+- name: Run k3s on localhost with Podman
+  hosts: local
+  become: true
+  gather_facts: true
+  roles:
+    - k3s_podman

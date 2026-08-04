@@ -1,0 +1,21 @@
+---
+k3s_podman_container_name: k3s
+k3s_podman_image: docker.io/rancher/k3s:v1.36.1-k3s1
+k3s_podman_service_name: k3s-podman
+k3s_podman_node_name: "{{ inventory_hostname }}"
+
+k3s_podman_data_dir: /var/lib/rancher/k3s
+k3s_podman_config_dir: /etc/rancher/k3s
+k3s_podman_env_file: /etc/sysconfig/k3s-podman
+k3s_podman_kubeconfig: /etc/rancher/k3s/k3s.yaml
+
+# Set this with Ansible Vault for a stable server token.  When empty, k3s
+# creates and persists a token below k3s_podman_data_dir.
+k3s_podman_token: ""
+k3s_podman_tls_sans: []
+k3s_podman_extra_server_args: []
+
+k3s_podman_configure_firewalld: true
+k3s_podman_api_port: 6443
+k3s_podman_pod_cidr: 10.42.0.0/16
+k3s_podman_service_cidr: 10.43.0.0/16
