@@ -1,0 +1,3 @@
+# Semaphore UI / Ansible Galaxy のキャッシュハッシュ
+collections/*.md5
+collections/requirements.yml.md5
