@@ -1,6 +1,6 @@
 ---
 - name: Update all packages on RHEL-based devices
-  hosts: all
+  hosts: "all:!windows"
   become: yes
   tasks:
     - name: Ensure the host is RedHat family (RHEL, CentOS, Rocky, Alma, Fedora)
