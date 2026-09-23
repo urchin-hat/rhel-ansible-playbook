@@ -3,11 +3,14 @@
   hosts: "all:!windows"
   become: yes
   tasks:
-    - name: Ensure the host is RedHat family (RHEL, CentOS, Rocky, Alma, Fedora)
-      ansible.builtin.assert:
-        that:
-          - ansible_os_family == "RedHat"
-        fail_msg: "This playbook is designed only for RedHat family distributions."
+    - name: Notify when the host is not managed by DNF
+      ansible.builtin.debug:
+        msg: "Skipping {{ inventory_hostname }} because it is not a RedHat family host."
+      when: ansible_os_family != "RedHat"
+
+    - name: Skip hosts that are not managed by DNF
+      ansible.builtin.meta: end_host
+      when: ansible_os_family != "RedHat"
 
     - name: Find Google Cloud repository files
       ansible.builtin.find:
